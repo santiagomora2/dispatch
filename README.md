@@ -382,7 +382,7 @@ def cmd_read_file(path: str):
 from agent.cmd import memory, files, your_new_file #noqa
 ```
 
-This was maybe a bad example because this command isn't actually implemented (why print it in console if you can just open the file) but you get the jist.
+This was maybe a bad example because this command isn't actually implemented (why print it in console if you can just open the file) but you get the gist.
 
 #### Arg completer
 
