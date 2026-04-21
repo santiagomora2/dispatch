@@ -28,4 +28,4 @@ def get_schemas():
     return [schema for _, schema in TOOLS.values()]
 
 # From here on import all tools for the agent, they'll be added to TOOLS automatically
-from agent.tools import files, memory #noqa
+from agent.tools import files, memory, web #noqa

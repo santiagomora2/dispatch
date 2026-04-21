@@ -26,7 +26,8 @@ def compact_conversation(messages, model):
             "- Key decisions and outcomes\n"
             "- Files created or modified and how\n"
             "- Open tasks or next steps\n"
-            "- Any facts worth remembering long-term\n\n"
+            "- Any facts worth remembering long-term\n"
+            "If there's a user prompt at the end, proceed with the summarization and append the user query at the end.\n\n"
             f"CONVERSATION:\n{history_text}"
         )
     }])

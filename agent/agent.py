@@ -7,7 +7,7 @@ from prompt_toolkit.formatted_text import HTML
 
 from agent.paths import CONFIG_FILE, MEMORY_FILE
 from agent.tools import dispatch, get_schemas
-import agent.cmd  # noqa — registers all commands
+import agent.cmd  # noqa. registers all commands
 from agent.completer import SlashCompleter
 from agent.fancy_banner import print_banner, say_bye
 from agent.cmd.session import do_compact
@@ -30,7 +30,8 @@ def build_system_prompt():
     memory = json.loads(MEMORY_FILE.read_text())
     return f"""You are Dispatch, a local agent assistant.
 Today's working memory: {json.dumps(memory)}
-Use tools when needed. Always return errors as tool results, never crash."""
+Prioritize tool use when needed, add facts, log tasks and use your scratch pad effectively.
+Always return errors as tool results, never crash."""
 
 def estimate_tokens(messages):
     """
@@ -93,6 +94,7 @@ def run():
 
         # Check context length and compact if needed before calling the model
         if estimate_tokens(messages) > ctx["config"]["context_limit"] * 0.8:
+            console.print("[bold orange]Reached 80/% of context limit. Auto compacting. [/bold orange] ", end="\n")
             do_compact(ctx, messages)
 
         # Stream text, accumulate tool calls
@@ -107,30 +109,42 @@ def run():
         tool_calls = []
         assistant_message = None
 
+        interrupted = False  # flag to track if streaming was interrupted
+
         # Stream assistant response, accumulate content and tool calls
         console.print("[bold green]dispatch>[/bold green] ", end="")
-        for chunk in stream:
-            msg = chunk.message
-            if msg.content:
-                console.print(msg.content, end="", highlight=False)
-                full_content += msg.content
-            if msg.tool_calls:
-                tool_calls.extend(msg.tool_calls)
-            assistant_message = msg.content  # last chunk has the full message
-
+        # Keyboard interrupt to stop streaming response and return to user input.
+        try:
+            for chunk in stream:
+                msg = chunk.message
+                if msg.content:
+                    console.print(msg.content, end="", highlight=False)
+                    full_content += msg.content
+                if msg.tool_calls:
+                    tool_calls.extend(msg.tool_calls)
+                assistant_message = msg.content  # last chunk has the full message
+        except KeyboardInterrupt:
+            interrupted = True
+            console.print("\n[yellow]↩ Interrupted. Type your next message.[/yellow]")
+        
         console.print()  # newline after stream
 
+        if interrupted:
+            pending_tool_response = False
+            continue
         # Append assistant turn
         messages.append({"role": "assistant", "content": full_content,
                          "tool_calls": tool_calls if tool_calls else None})
 
         # Execute tool calls if any
         if tool_calls:
+            chars_this_turn = 0
             for call in tool_calls:
                 name = call.function.name
                 args = call.function.arguments
                 console.print(f"[dim]→ tool: {name}({args})[/dim]")
                 result = dispatch(name, args)
+                chars_this_turn += len(json.dumps(result))
                 messages.append({
                     "role": "tool",
                     "content": json.dumps(result),
@@ -138,6 +152,10 @@ def run():
                 })
 
             pending_tool_response = True
+
+            # If the tool calls returned a lot of content, compact before re-entering the model loop.
+            if chars_this_turn > ctx["config"]["context_limit"] * 0.75:
+                do_compact(ctx, messages)
 
             # Re-enter loop so agent sees tool results
             continue
