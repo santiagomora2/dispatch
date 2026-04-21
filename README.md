@@ -398,3 +398,12 @@ def cmd_model(arg, ctx):
 
 All of the other stuff like welcome banner in the `fancy_banner.py` file or the main loop in `agent.py` can also be modified to make your own version of dispatch and learn how agentic AI and tools work.
 
+---
+
+### License
+
+MIT License. Use, modify, teach, learn. It's all yours.
+
+---
+
+Built with ❤️, as always.
