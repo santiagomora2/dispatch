@@ -5,7 +5,7 @@ from rich.console import Console
 from rich.columns import Columns
 from rich.text import Text
 
-WAYS_TO_BYE = ["Smell you later.", "See ya.", "Catch you on the flip side.", "Take it easy.", "*dap*", "Peace out."]
+WAYS_TO_BYE = ["See ya.", "Catch you later.", "Take it easy.", "*dap*", "Peace out."]
 
 console = Console()
 
