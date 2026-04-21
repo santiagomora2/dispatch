@@ -45,7 +45,7 @@ def read_file(path: str):
         "name": "create_file",
         "description": (
             "Create a new file with an initial skeleton. "
-            "Always provide a meaningful skeleton with structure, placeholders, and comments — never create empty files. "
+            "Always provide a meaningful skeleton with structure, placeholders, and comments; never create empty files. "
             "After creating, use patch_file to fill in the actual content section by section."
         ),
         "parameters": {
@@ -97,7 +97,7 @@ def create_file(path: str, content: str = ""):
             "- Replace: old_str is what changes, new_str is the replacement\n"
             "- Insert: include the anchor line in old_str, repeat it in new_str with new content added after\n"
             "- Delete: set new_str to empty string\n\n"
-            "old_str MUST be unique in the file — include enough surrounding lines to make it unambiguous. "
+            "old_str MUST be unique in the file; include enough surrounding lines to make it unambiguous. "
             "If unsure, use read_file first to verify the exact content and location."
         ),
         "parameters": {

@@ -1,1 +1,1 @@
-{ "model": "gemma4:e4b", "context_limit": 10000, "mode": "auto", "version": "0.1.0" }
+{ "model": "qwen3.5:9b", "context_limit": 16000, "mode": "auto", "version": "0.1.0" }

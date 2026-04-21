@@ -30,7 +30,7 @@ class SlashCompleter(Completer):
                                      display=display, display_meta=display_meta)
             return
 
-        # typing the argument — check if command has arg completions
+        # typing the argument: check if command has arg completions
         cmd_name = parts[0]
         arg_so_far = parts[1] if len(parts) > 1 else ""
         entry = COMMANDS.get(cmd_name)
