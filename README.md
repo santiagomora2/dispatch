@@ -386,7 +386,7 @@ This was maybe a bad example because this command isn't actually implemented (wh
 
 #### Arg completer
 
-It is, again, a function that will give the user the options they can choose as their argument(s). for example, the models they can choose when using /model:
+It is, again, a function that will give the user the options they can choose as their argument(s). For example, the models they can choose when using `/model`:
 
 ```python
 import ollama
