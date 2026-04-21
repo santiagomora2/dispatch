@@ -16,6 +16,20 @@ A local AI agent harness written in python, built on ollama; with tool calling, 
 
 ---
 
+## Index
+
+- [Index](#index) - This section
+- [Installation](#installation) - Setup and prerequisites
+- [Project Structure](#project-structure) - Directory tree overview
+- [How It Works](#how-it-works) - Boot and main loop explained
+- [Tool Registry](#tool-registry) - Available tools
+- [Slash Command Registry](#slash-command-registry) - All slash commands
+- [What's Next](#whats-next) - Planned features
+- [How to build on top of Dispatch](#how-to-build-on-top-of-dispatch) - Adding custom tools/commands
+- [License](#license)
+
+---
+
 ## Installation
 
 > Quick note: I developed dispatch on Mac so it should work for MacOs and Linux. Windows is untested, but it should also work.
