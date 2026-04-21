@@ -1,0 +1,19 @@
+[project]
+name = "dispatch"
+version = "0.1.0"
+description = "A local CLI agentic coding tool written in python. Simple enough that anyone can customize it."
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4>=4.14.3",
+    "duckduckgo-search>=8.1.1",
+    "httpx>=0.28.1",
+    "ollama>=0.6.1",
+    "prompt-toolkit>=3.0.52",
+    "requests>=2.33.1",
+    "rich>=15.0.0",
+    "typer>=0.24.1",
+]
+
+[project.scripts]
+dispatch = "agent.main:app"
