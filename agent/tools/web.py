@@ -22,7 +22,7 @@ def chunk_by_headings(text: str):
             "required": ["query"]
         }
     }
-})
+}, lazy = True)
 def web_search(query: str, max_results: int = 3):
     """
     Perform a web search using DuckDuckGo and return the top results.
@@ -50,7 +50,7 @@ def web_search(query: str, max_results: int = 3):
             "required": ["url"]
         }
     }
-})
+}, lazy = True)
 def fetch_url(url: str, focus: list[str] = None):
     """
     Extract website text for a given URL using Jina with Trafilatura as a fallback.

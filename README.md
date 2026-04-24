@@ -107,6 +107,7 @@ dispatch/
 ├── agent/
 │   ├── cmd/
 │   │   ├── __init__.py     # registry + dispatch
+│   │   ├── arg_completers.py        # contains arg_completer functions for commands
 │   │   ├── files.py        # file commands (/tree, /ls etc.)
 │   │   ├── memory.py.      # memory commands (/note, /forget, etc.)
 │   │   └── session.py      # session commands (/clear, /compact, /model, etc.)
@@ -115,8 +116,8 @@ dispatch/
 │   │   ├── files.py        # file tools (read_file, patch_file, tree, etc.)
 │   │   ├── memory.py       # memory tools (add_fact, forget_fact, etc.)
 │   │   ├── session.py      # compact conversation (not callable, handled in main loop)
-│   │   ├── shell.py.       # shell tools
-│   │   └── web.py          # web search tools
+│   │   ├── shell.py.       # shell tools (run_shell)
+│   │   └── web.py          # web search tools (web_search, fetch_url)
 │   ├── __init__.py
 │   ├── agent.py            # main loop
 │   ├── completer.py        # slash commands auto-completer
@@ -179,12 +180,12 @@ START
 Every tool is a decorated Python function in `tools/`:
 
 ```python
-@tool(schema_dict)
+@tool(schema_dict, lazy=False)
 def read_file(path: str):
     ...
 ```
 
-* The `@tool` decorator registers the function and its JSON schema into `TOOLS = {}`. 
+* The `@tool` decorator registers the function and its JSON schema into `TOOLS = {}` or into `LAZY{}` if `lazy=True`(tool disabled). 
 * The modules are imported at the bottom of `tools/__init__.py` so decorators run on startup. `get_schemas()` returns all schemas to pass to Ollama. 
 * `dispatch(name, args)` looks up and calls the function, always returning `{"error": "..."}` on failure instead of raising.
 
@@ -224,11 +225,10 @@ def cmd_note(arg, ctx):
 | `find_pattern` | `tools/files.py` | Glob search for files matching a pattern |
 | `list_dir` | `tools/files.py` | Lists files and dirs at a path |
 | `tree` | `tools/files.py` | Prints a directory tree up to a given depth |
-| `read_memory` | `tools/memory.py` | Returns full `memory.json` contents|
-| `add_fact` | `tools/memory.py` | Appends a user-facing fact or preference to persistent memory |
-| `forget_fact` | `tools/memory.py` | Removes a specific fact from memory by its exact text |
-| `log_task` | `tools/memory.py` | Records a completed task and its outcome to the task history |
-| `update_scratch` | `tools/memory.py` | Stores or updates a temporary key/value pair in the working scratch space |
+| `update_memory` | `tools/memory.py` | Update a section of the agent's persistent memory markdown file|
+| `web_search` | `tools/web.py` | Searches the web for relevant URLs |
+| `fetch_url` | `tools/web.py` | Fetches the content from a given URL, parses it as Markdown (`jina` + `tralifatura` fallback) |
+| `run_shell` | `tools/shell.py` | Run a shell command with human confirmation, streaming output line by line |
 
 ## Current Slash Commands
 
@@ -236,10 +236,12 @@ def cmd_note(arg, ctx):
 |---|---|---|
 | `/memory` | `/memory` | Print current memory.json |
 | `/note` | `/note <text>` | Append a fact to memory directly |
-| `/forget` | `/forget <key>` | Delete a memory key |
+| `/forget` | `/forget <section>` | Clear a memory section |
 | `/clear` | `/clear` | Reset messages, keep memory |
 | `/reset` | `/reset` | Reset messages and memory |
 | `/compact` | `/compact` | Summarize session and replace history |
+| `/compact_tools` | `/compact_tools` | Compact tool results into a summary |
+| `/tools` | `/tools [enable/disable] <tool>` | List, enable, or disable tools |
 | `/model` | `/model [name]` | Show or switch the active Ollama model |
 | `/tree` | `/tree <path> <depth>` | Print directory tree |
 | `/ls` | `/ls <path>` | List directory contents |
@@ -250,8 +252,6 @@ def cmd_note(arg, ctx):
 
 ## What's Next
 
-- `web.py` - `web_search`, `fetch_url`
-- `shell.py` - always HITL (Human-in-the-loop) gated
 - `/mode` - toggle careful/auto HITL aggressiveness
 - `/retry` - resend last user message
 - `/history` - print condensed message log
@@ -288,6 +288,7 @@ def read_file(path: str):
 2. **Add the `@tool` decorator** with an adequate description. 
     - The **description**: think which of these are necessary to tell the agent: what the tool does, when to use it, which tools it may use before/after, examples of usage, etc.
     - The **parameters** the function recieves: their type and description; which ones are required
+    - Whether or not the tool is disabled on startup (`lazy`)
 
 ```python
 @tool({
@@ -303,7 +304,7 @@ def read_file(path: str):
             "required": ["path"]
         }
     }
-})
+}, lazy = False)
 def read_file(path: str):
     try:
         with open(path) as f:
@@ -407,6 +408,8 @@ def cmd_model(arg, ctx):
 # Oversimplified version for illustrative purposes
 # check agent/cmd/session.py for the actual implementation
 ```
+
+Prefer putting it into `arg_completers.py` unless definable as a `lambda`function inside the decorator.
 
 ### Everything else
 

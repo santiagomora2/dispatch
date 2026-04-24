@@ -1,10 +1,12 @@
 from rich.console import Console
 from rich.prompt import Confirm
-from agent.cmd import command, get_available_models
+from agent.cmd import COMMANDS, command
 from agent.paths import MEMORY_FILE
 from agent.fancy_banner import say_bye
-from agent.tools.session import compact_conversation
+from agent.tools.session import compact_conversation, compact_tool_results
+from agent.tools import TOOLS, LAZY, enable_tool, disable_tool
 import json
+from agent.cmd.arg_completers import get_available_models, get_tool_names
 
 console = Console()
 
@@ -62,17 +64,17 @@ def cmd_help(arg, ctx):
     Shows help information about available commands.
     Usage: /help
     """
-    from agent.cmd import COMMANDS
+
     console.print("[bold]Available commands:[/bold]\n")
     
     # pre-compute max width for alignment
-    max_cmd = max(len(name) for name in COMMANDS)
-    max_usage = max(len(entry["usage"]) for entry in COMMANDS.values())
+    max_cmd = max(len(name) for name in COMMANDS) + 1  # +1 for the "/"
+    max_usage = max(len(entry.get("usage", "")) for entry in COMMANDS.values())
 
     # print commands sorted by name with description and usage.
     for name, entry in sorted(COMMANDS.items()):
         cmd_col = f"/{name}".ljust(max_cmd + 1)
-        usage_col = entry["usage"].ljust(max_usage)
+        usage_col = entry.get("usage", "").replace("[", "\\[").ljust(max_usage)
         console.print(f"  [cyan]{cmd_col}[/cyan]  [dim]{usage_col}[/dim]  {entry['description']}")
 
 @command("exit", description="Exit the application", usage="")
@@ -99,9 +101,64 @@ def do_compact(ctx, messages):
     messages.append({"role": "assistant", "content": f"[COMPACTED]\n{summary}"})
     console.print("[green]✓ Compacted.[/green]")
 
+def do_tool_compact(ctx, messages):
+    """
+    Compacts the tool result messages by summarizing them into a shorter form.
+    This is useful for keeping the conversation history manageable while retaining important tool outputs.
+    The original tool messages are replaced with one summary message.
+    """
+    with console.status("[yellow]Compacting tool results...[/yellow]", spinner="dots"):
+        new_messages = compact_tool_results(messages, ctx["model"])
+    
+    messages.clear()
+    messages.extend(new_messages)
+    console.print("[green]✓ Tool results compacted.[/green]")
+
 @command("compact", description="Compact session into a summary", usage="")
 def cmd_compact(arg, ctx):
     """
     Compacts the current session messages by summarizing them into a shorter form.
     """
     do_compact(ctx, ctx["messages"])
+
+@command("compact_tools", description="Compact tool results into a summary", usage="")
+def cmd_compact_tools(arg, ctx):
+    """
+    Compacts the tool result messages by summarizing them into a shorter form.
+    """
+    do_tool_compact(ctx, ctx["messages"])
+
+from agent.tools import TOOLS, LAZY, enable_tool, disable_tool
+
+@command("tools",
+         description="List, enable, or disable tools",
+         usage="[enable|disable <name>]",
+         arg_completer=lambda: ["enable " + t for t in get_tool_names()] + 
+                               ["disable " + t for t in get_tool_names()])
+def cmd_tools(arg, ctx):
+    if not arg:
+        console.print("[bold green]Active tools:[/bold green]")
+        for name in sorted(TOOLS):
+            console.print(f"  [green]✓[/green] {name}")
+        if LAZY:
+            console.print("\n[bold dim]Lazy (inactive):[/bold dim]")
+            for name in sorted(LAZY):
+                console.print(f"  [dim]○ {name}[/dim]")
+        return
+
+    parts = arg.split(maxsplit=1)
+    if len(parts) != 2 or parts[0] not in ("enable", "disable"):
+        console.print("[red]Usage: /tools enable <name> | /tools disable <name>[/red]")
+        return
+
+    action, name = parts
+    if action == "enable":
+        if enable_tool(name):
+            console.print(f"[green]✓ Enabled: {name}[/green]")
+        else:
+            console.print(f"[red]Not found in lazy tools: {name}[/red]")
+    elif action == "disable":
+        if disable_tool(name):
+            console.print(f"[yellow]○ Disabled: {name}[/yellow]")
+        else:
+            console.print(f"[red]Not found in active tools: {name}[/red]")

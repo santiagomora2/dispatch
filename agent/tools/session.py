@@ -35,3 +35,24 @@ def compact_conversation(messages, model):
     summary = response.message.content
     SESSION_FILE.write_text(json.dumps({"summary": summary}, indent=2))
     return summary
+
+def compact_tool_results(messages, model):
+    # pull out tool result messages
+    tool_msgs = [m for m in messages if m["role"] == "tool"]
+    if not tool_msgs:
+        return messages
+    
+    combined = "\n".join(m["content"] for m in tool_msgs)
+    summary = ollama.chat(model=model, messages=[{
+        "role": "user",
+        "content": f"Summarize these tool results concisely, keeping only what's useful for the task:\n{combined}"
+    }]).message.content
+
+    # replace all tool messages with one summary
+    new_messages = [m for m in messages if m["role"] != "tool"]
+    new_messages.append({
+        "role": "tool",
+        "content": f"[TOOL RESULTS SUMMARY]\n{summary}",
+        "name": "compact"
+    })
+    return new_messages
