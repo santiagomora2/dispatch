@@ -1,18 +1,17 @@
-TOOLS = {}  # name → (fn, schema)
+TOOLS = {}
+LAZY = {}
 
-def tool(schema):
-    """
-    Decorator: Adds tools to the TOOLS dictionary
-    """
+def tool(schema, lazy=False):
     def decorator(fn):
-        TOOLS[fn.__name__] = (fn, schema)
+        entry = (fn, schema)
+        if lazy:
+            LAZY[fn.__name__] = entry
+        else:
+            TOOLS[fn.__name__] = entry
         return fn
     return decorator
 
 def dispatch(name, arguments):
-    """
-    Dispatch a tool use, verify it exists
-    """
     if name not in TOOLS:
         return {"error": f"Unknown tool: {name}"}
     fn, _ = TOOLS[name]
@@ -22,10 +21,20 @@ def dispatch(name, arguments):
         return {"error": str(e)}
 
 def get_schemas():
-    """
-    Get the schemas of the tools
-    """
     return [schema for _, schema in TOOLS.values()]
 
-# From here on import all tools for the agent, they'll be added to TOOLS automatically
-from agent.tools import files, memory, web #noqa
+def enable_tool(name):
+    if name in LAZY and name not in TOOLS:
+        TOOLS[name] = LAZY.pop(name)
+        return True
+    return False
+
+def disable_tool(name):
+    if name in TOOLS:
+        LAZY[name] = TOOLS.pop(name)
+        return True
+    return False
+
+# imports — mark lazy tools
+from agent.tools import files, memory  # noqa
+from agent.tools import web, shell     # noqa  (mark these lazy=True in their decorators)

@@ -1,5 +1,4 @@
 from rich.console import Console
-
 console = Console()
 COMMANDS = {}  # name → {"fn": fn, "description": str, "usage": str}
 
@@ -26,16 +25,5 @@ def dispatch_command(raw_input, ctx):
         console.print(f"[red]Unknown command: /{name}[/red]")
         return
     entry["fn"](arg, ctx)
-
-import ollama
-
-def get_available_models():
-    """
-    Get available models from ollama, return empty list if there's an error.
-    """
-    try:
-        return [m.model for m in ollama.list().models]
-    except Exception:
-        return []
 
 from agent.cmd import memory, session, files  # noqa

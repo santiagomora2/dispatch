@@ -202,7 +202,7 @@ def find_pattern(pattern: str, root: str = ""):
             "required": []
         }
     }
-})
+}, lazy = True)
 def list_dir(path: str = ""):
     """
     List files and directories at a given path.

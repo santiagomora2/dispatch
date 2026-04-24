@@ -10,7 +10,7 @@ from agent.tools import dispatch, get_schemas
 import agent.cmd  # noqa. registers all commands
 from agent.completer import SlashCompleter
 from agent.fancy_banner import print_banner, say_bye
-from agent.cmd.session import do_compact
+from agent.cmd.session import do_compact, do_tool_compact
 
 console = Console()
 
@@ -21,17 +21,15 @@ def load_config():
     return json.loads(CONFIG_FILE.read_text())
 
 def build_system_prompt():
-    """
-    Builds the system prompt:
-    - Loads memory from "memory.json file"
-    - ...
-    - Glues it all with the system prompt text.
-    """
-    memory = json.loads(MEMORY_FILE.read_text())
+    memory = MEMORY_FILE.read_text()
     return f"""You are Dispatch, a local agent assistant.
-Today's working memory: {json.dumps(memory)}
-Prioritize tool use when needed, add facts, log tasks and use your scratch pad effectively.
-Always return errors as tool results, never crash."""
+
+## Your Memory
+{memory}
+
+Use tools when needed. Always return errors as tool results, never crash.
+For persistent facts, preferences, or completed tasks — update memory.
+Prioritize tool use when needed."""
 
 def estimate_tokens(messages):
     """
@@ -75,6 +73,7 @@ def run():
         if not pending_tool_response:
             try:
                 user_input = session.prompt(HTML("<ansibrightcyan><b>you></b></ansibrightcyan> ")).strip()
+                tokens_this_turn, tool_calls_this_turn = 0, 0 # track tokens and tool calls for possible compacting
             except (KeyboardInterrupt, EOFError):
                 say_bye()
                 break
@@ -138,13 +137,14 @@ def run():
 
         # Execute tool calls if any
         if tool_calls:
-            chars_this_turn = 0
             for call in tool_calls:
                 name = call.function.name
                 args = call.function.arguments
                 console.print(f"[dim]→ tool: {name}({args})[/dim]")
                 result = dispatch(name, args)
-                chars_this_turn += len(json.dumps(result))
+                # Track tokens and tool calls since last user input for possible compact.
+                tokens_this_turn += len(json.dumps(result)) // 4 # rough estimate
+                tool_calls_this_turn += 1
                 messages.append({
                     "role": "tool",
                     "content": json.dumps(result),
@@ -154,8 +154,10 @@ def run():
             pending_tool_response = True
 
             # If the tool calls returned a lot of content, compact before re-entering the model loop.
-            if chars_this_turn > ctx["config"]["context_limit"] * 0.75:
-                do_compact(ctx, messages)
+            if tokens_this_turn > ctx["config"]["context_limit"] * 0.50 or tool_calls_this_turn > 5:
+                do_tool_compact(ctx, messages)
+                # Reset counts after compacting
+                tokens_this_turn, tool_calls_this_turn = 0, 0
 
             # Re-enter loop so agent sees tool results
             continue
