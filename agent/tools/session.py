@@ -50,7 +50,8 @@ def compact_tool_results(messages, model):
     combined = "\n".join(m["content"] for m in tool_msgs)
     summary = ollama.chat(model=model, messages=[{
         "role": "user",
-        "content": f"Summarize these tool results concisely, keeping only what's useful for the task:\n{combined}"
+        "content": f"""Summarize these tool results concisely, keeping only what's useful for the task. 
+        Specify whether each tool call resulted in a positive, negative, or neutral outcome:\n{combined}"""
     }]).message.content
 
     # replace all tool messages with one summary
