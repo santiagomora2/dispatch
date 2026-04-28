@@ -110,6 +110,7 @@ dispatch/
 │   │   ├── arg_completers.py        # contains arg_completer functions for commands
 │   │   ├── files.py        # file commands (/tree, /ls etc.)
 │   │   ├── memory.py.      # memory commands (/note, /forget, etc.)
+│   │   ├── plan.py         # plan command
 │   │   └── session.py      # session commands (/clear, /compact, /model, etc.)
 │   ├── tools/
 │   │   ├── __init__.py     # registry + dispatch + get_schemas
@@ -123,10 +124,11 @@ dispatch/
 │   ├── completer.py        # slash commands auto-completer
 │   ├── fancy_banner.py     # fancy welcome banner, ways to goodbye 
 │   ├── main.py             # CLI entrypoint (typer)
-│   └── paths.py            # ROOT-anchored file
+│   ├── paths.py            # ROOT-anchored file
+│   └── system_prompt.py    # system prompt
 ├── README.md               
 ├── config.json             # model, context_limit, mode
-├── memory.json             # persistent agent memory
+├── memory.md               # persistent agent memory
 ├── pyproject.toml          # entry point: `dispatch` command
 ├── session.json            # last compact summary
 └── uv.lock
@@ -151,28 +153,28 @@ dispatch/
 START
 │
 ├── pending_tool_response = False?
-│   YES → get user input
-│         ├── "/" → run slash command → back to START
-│         ├── empty → back to START
-│         └── normal → append to messages
+│   YES ──> get user input
+│         ├── "/" ──> run slash command ──> back to START
+│         ├── empty ──> back to START
+│         └── normal ──> append to messages
 │
 ├── check token estimate > 80% limit?
-│   YES → compact conversation → continue
+│   YES ──> compact conversation (summarize history) ──> continue
 │
 ├── call ollama.chat(stream=True, tools=get_schemas())
 │   └── stream chunks to terminal as they arrive
-│       ├── text content → print immediately
-│       └── tool_calls → accumulate, execute after stream ends
+│       ├── text content ──> print immediately
+│       └── tool_calls ──> accumulate, execute after stream ends
 │
 ├── tool_calls found?
-│   YES → for each call:
-│         → print [dim] tool: name(args)
-│         → dispatch(name, args)
-│         → append result to messages as role=tool
-│         set pending_tool_response = True → back to START (no user input)
+│   YES ──> for each call:
+│         ├── print [dim] tool: name(args)
+│         ├── dispatch(name, args)
+│         ├── append result to messages (role=tool)
+│         └── set pending_tool_response = True ──> back to START (skip user input)
 │
-│   NO  → response already streamed
-│         wait for next user input → back to START
+│   NO  ──> response already streamed
+             wait for next user input ──> back to START
 ```
 
 ### Tool Registry
@@ -245,6 +247,7 @@ def cmd_note(arg, ctx):
 | `/model` | `/model [name]` | Show or switch the active Ollama model |
 | `/tree` | `/tree <path> <depth>` | Print directory tree |
 | `/ls` | `/ls <path>` | List directory contents |
+| `/plan` | `/plan <task>` | Generate and execute a step-by-step plan |
 | `/help` | `/help` | List all available commands |
 | `/exit` | `/exit` | Quit Dispatch |
 
@@ -255,7 +258,7 @@ def cmd_note(arg, ctx):
 - `/mode` - toggle careful/auto HITL aggressiveness
 - `/retry` - resend last user message
 - `/history` - print condensed message log
-- `/plan` - break down complex problems into steps, write a callable markdown file
+- `/plan` - prevent context window limit, optimize token usage
 
 > - Maybe in the future MCP servers and custom skills idk
 

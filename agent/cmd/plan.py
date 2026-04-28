@@ -9,6 +9,14 @@ from agent.system_prompt import build_system_prompt
 console = Console()
 
 def plan(task: str, messages: list, model: str, ctx: dict):
+    """
+    Converts a complex task into a structured, step-by-step plan and executes it sequentially.
+    Stages:
+        1. Understand + Decompose: Restate the task and break it down into discrete subtasks
+        2. Sequence + Risks: Order the subtasks and note potential risks for each step
+        3. Final structured plan: Output a clean numbered list of steps
+        4. Execute steps sequentially with live checklist and user confirmation before each step
+    """
     plan_messages = [
         {"role": "system", "content": build_system_prompt()},  # system prompt only — clean context for planning
         {"role": "user", "content": task}
