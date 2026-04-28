@@ -1,4 +1,5 @@
 import json
+from httpx import ConnectError
 import ollama
 from rich.console import Console
 from rich.markdown import Markdown
@@ -11,6 +12,7 @@ import agent.cmd  # noqa. registers all commands
 from agent.completer import SlashCompleter
 from agent.fancy_banner import print_banner, say_bye
 from agent.cmd.session import do_compact, do_tool_compact
+from agent.system_prompt import build_system_prompt
 
 console = Console()
 
@@ -19,17 +21,6 @@ def load_config():
     Read config file
     """
     return json.loads(CONFIG_FILE.read_text())
-
-def build_system_prompt():
-    memory = MEMORY_FILE.read_text()
-    return f"""You are Dispatch, a local agent assistant.
-
-## Your Memory
-{memory}
-
-Use tools when needed. Always return errors as tool results, never crash.
-For persistent facts, preferences, or completed tasks — update memory.
-Prioritize tool use when needed."""
 
 def estimate_tokens(messages):
     """
@@ -85,9 +76,18 @@ def run():
         
             # Handle slash commands immediately, they don't go through the model
             if user_input.startswith("/"):
-                agent.cmd.dispatch_command(user_input, ctx)
-                model = ctx["model"]  # reflect /model changes
-                continue
+                try:
+                    agent.cmd.dispatch_command(user_input, ctx)
+                    model = ctx["model"]  # reflect /model changes
+                    continue
+                except ConnectError or ollama.errors.ModelNotFoundError:
+                    console.print("[red]Error: Ollama is not running or model not found.[/red]")
+                    messages.pop()  # remove user message if command failed
+                    continue
+                except Exception as e:
+                    console.print(f"[red]Error during command execution: {str(e)}[/red]")
+                    messages.pop()  # remove user message if command failed
+                    continue
 
         pending_tool_response = False
 
@@ -96,13 +96,22 @@ def run():
             console.print("[bold orange]Reached 80/% of context limit. Auto compacting. [/bold orange] ", end="\n")
             do_compact(ctx, messages)
 
-        # Stream text, accumulate tool calls
-        stream = ollama.chat(
-                model=model,
-                messages=messages,
-                tools=get_schemas(),
-                stream=True,
-            )
+        try:
+            # Stream text, accumulate tool calls
+            stream = ollama.chat(
+                    model=model,
+                    messages=messages,
+                    tools=get_schemas(),
+                    stream=True,
+                )
+        except ConnectError or ollama.errors.ModelNotFoundError:
+            console.print("[red]Error: Ollama is not running or model not found.[/red]")
+            messages.pop()
+            continue
+        except Exception as e:
+            console.print(f"[red]Error during model call: {str(e)}[/red]")
+            messages.pop()
+            continue
 
         full_content = ""
         tool_calls = []
@@ -125,7 +134,15 @@ def run():
         except KeyboardInterrupt:
             interrupted = True
             console.print("\n[yellow]↩ Interrupted. Type your next message.[/yellow]")
-        
+        except ConnectError or ollama.errors.ModelNotFoundError:
+            console.print("\n[red]Error: Ollama is not running or model not found.[/red]")
+            messages.pop()  # remove user message if model call failed
+            continue
+        except Exception as e:
+            console.print(f"\n[red]Error during model response: {str(e)}[/red]")
+            messages.pop()  # remove user message if model call failed
+            continue
+
         console.print()  # newline after stream
 
         if interrupted:
