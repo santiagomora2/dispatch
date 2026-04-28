@@ -136,6 +136,13 @@ from agent.tools import TOOLS, LAZY, enable_tool, disable_tool
          arg_completer=lambda: ["enable " + t for t in get_tool_names()] + 
                                ["disable " + t for t in get_tool_names()])
 def cmd_tools(arg, ctx):
+    """
+    Lists active and lazy tools, or enables/disables a tool.
+    Usage:
+        /tools - lists active and lazy tools
+        /tools enable <name> - enables a lazy tool
+        /tools disable <name> - disables an active tool
+    """
     if not arg:
         console.print("[bold green]Active tools:[/bold green]")
         for name in sorted(TOOLS):

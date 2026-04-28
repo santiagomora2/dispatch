@@ -37,6 +37,11 @@ def compact_conversation(messages, model):
     return summary
 
 def compact_tool_results(messages, model):
+    """
+    Compacts tool result messages by summarizing them into a shorter form.
+    This is useful for keeping the conversation history manageable while retaining important tool outputs.
+    The original tool messages are replaced with one summary message.
+    """
     # pull out tool result messages
     tool_msgs = [m for m in messages if m["role"] == "tool"]
     if not tool_msgs:

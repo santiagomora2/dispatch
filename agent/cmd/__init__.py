@@ -26,4 +26,4 @@ def dispatch_command(raw_input, ctx):
         return
     entry["fn"](arg, ctx)
 
-from agent.cmd import memory, session, files  # noqa
+from agent.cmd import memory, session, files, plan  # noqa
