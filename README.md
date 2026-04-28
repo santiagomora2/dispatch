@@ -143,7 +143,7 @@ dispatch/
 1. `dispatch` is invoked from anywhere in the terminal
 2. `main.py` calls `run()` in `agent.py`
 3. `agent.py` loads `config.json` (model, context limit, mode)
-4. `memory.json` is read and injected into the system prompt
+4. `memory.md` is read and injected into the system prompt
 5. The message history is initialized with the system prompt
 6. The main loop starts
 
@@ -236,7 +236,7 @@ def cmd_note(arg, ctx):
 
 | Command | Usage | What it does |
 |---|---|---|
-| `/memory` | `/memory` | Print current memory.json |
+| `/memory` | `/memory` | Print current memory.md |
 | `/note` | `/note <text>` | Append a fact to memory directly |
 | `/forget` | `/forget <section>` | Clear a memory section |
 | `/clear` | `/clear` | Reset messages, keep memory |
