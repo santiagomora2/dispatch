@@ -119,7 +119,7 @@ dispatch/
 │   │   ├── session.py      # compact conversation (not callable, handled in main loop)
 │   │   ├── shell.py.       # shell tools (run_shell)
 │   │   └── web.py          # web search tools (web_search, fetch_url)
-│   ├── plans/              # directory for agent's plans and statuses are logged
+│   ├── plans/              # directory where agent's plans and statuses are logged
 │   ├── __init__.py
 │   ├── agent.py            # main loop
 │   ├── completer.py        # slash commands auto-completer
