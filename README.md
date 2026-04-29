@@ -119,6 +119,7 @@ dispatch/
 │   │   ├── session.py      # compact conversation (not callable, handled in main loop)
 │   │   ├── shell.py.       # shell tools (run_shell)
 │   │   └── web.py          # web search tools (web_search, fetch_url)
+│   ├── plans/              # directory for agent's plans and statuses are logged
 │   ├── __init__.py
 │   ├── agent.py            # main loop
 │   ├── completer.py        # slash commands auto-completer
@@ -417,6 +418,25 @@ Prefer putting it into `arg_completers.py` unless definable as a `lambda`functio
 ### Everything else
 
 All of the other stuff like welcome banner in the `fancy_banner.py` file or the main loop in `agent.py` can also be modified to make your own version of dispatch and learn how agentic AI and tools work.
+
+### My favorite feature? (personal note)
+
+I really enjoyed implementing `/plan`. 
+
+Because of the natural constraints of running models locally on a computer without that much memory capacity, Mixture of Experts (MoE) models are an attractive option due to their speed and lower memory usage with only some parameters active at inference.
+
+A possible problem when trying to implement a big change suddenly is prompt trajectory: the early tokens heavily influence which experts activate, and a poorly structured initial prompt locks you into a suboptimal expert path for the entire generation.
+
+Hence `/plan`, which breaks the task into a guided reasoning sequence before any action is taken:
+
+    1. Understand & Decompose: Restate the task and break it into discrete subtasks.
+    2. Sequence & Assess Risks: Order the subtasks and note potential risks.
+    3. Finalize Plan: Output a structured markdown plan with steps and placeholders for decisions/artifacts.
+    4. Execute Sequentially: For each step, run it in isolation, allowing tool calls, and update the plan file with progress and artifacts.
+
+I've found it works pretty well with both dense and MoE models. 
+
+The reason for the plan file is not filling up KV cache too quickly, but still having a shared memory between the sub-agents which implement the task (and also have logs for implemented plans); and for MoE models, also having each step activate the appropriate experts for the task.
 
 ---
 
