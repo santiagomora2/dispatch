@@ -7,3 +7,5 @@ INVOCATION_DIR = Path(os.getcwd())
 CONFIG_FILE = ROOT / "config.json"
 MEMORY_FILE = ROOT / "memory.md"
 SESSION_FILE = ROOT / "session.json"
+PLANS_DIR = ROOT / "plans"
+PLANS_DIR.mkdir(exist_ok=True)
