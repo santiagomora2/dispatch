@@ -32,71 +32,76 @@ A local AI agent harness written in python, built on ollama; with tool calling, 
 
 ## Installation
 
-> Quick note: I developed dispatch on Mac so it should work for MacOs and Linux. Windows is untested, but it should also work.
+> Developed and tested on macOS and Linux. Windows should work but is untested.
 
 ### Prerequisites
 
-**1. Install `uv`**
+Before installing Dispatch, ensure you have:
+
+**1. Ollama installed and running**
+
+Download from [ollama.com](https://ollama.com) or install via package manager:
+
 ```bash
-# mac/linux
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# windows (powershell)
-powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
-```
-
-**2. Install and start Ollama**
-
-Download from [ollama.com](https://ollama.com) or via Homebrew:
-```bash
-# mac
+# macOS
 brew install ollama
 
-# linux
+# Linux
 curl -fsSL https://ollama.com/install.sh | sh
 
-# windows
-# download installer from https://ollama.com/download
+# Windows
+# Download installer from https://ollama.com/download
 ```
 
-Start the Ollama server:
+Start the server:
 ```bash
 ollama serve
 ```
 
-**3. Pull a model**
+**2. A model that supports tool calling**
 
-Dispatch works with any Ollama model that supports tool calling. Recommended:
 ```bash
-ollama pull gemma4:e4b       # strong reasoning
-ollama pull qwen3.5:9b       # fast, good tool calling
+# Recommended options:
+ollama pull qwen3.5:9b       # Fast, excellent tool calling
+ollama pull gemma4:e4b       # Strong reasoning
 ```
 
-### Setup
+### Install Dispatch
 
-Clone the repo and install as a global tool:
+#### Option A: From PyPI (easiest)
+```bash
+pip install dispatch-agent
+dispatch
+```
+
+#### Option B: From source
 ```bash
 git clone https://github.com/santiagomora2/dispatch.git
 cd dispatch
 uv tool install --editable .
 ```
 
-Update `config.json` to match the model you pulled:
+(Requires `uv`. Install with: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+
+### Configure
+
+Update `config.json` in the dispatch directory to match your Ollama model:
+
 ```json
 {
-  "model": "gemma4:e4b",
+  "model": "qwen3.5:9b",
   "context_limit": 6000,
   "mode": "auto",
-  "version": "0.1.0"
+  "version": "0.1.1"
 }
 ```
 
-Then invoke from any directory:
+Then run:
 ```bash
 dispatch
 ```
 
-Dispatch will operate on the directory you invoke it from, while keeping its own memory and config in the project root.
+Dispatch operates on your current directory while keeping memory and config at the project root.
 
 ---
 
