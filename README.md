@@ -90,9 +90,10 @@ Update `config.json` in the dispatch directory to match your Ollama model:
 ```json
 {
   "model": "qwen3.5:9b",
-  "context_limit": 6000,
+  "context_limit": 32000,
   "mode": "auto",
-  "version": "0.1.1"
+  "version": "0.1.2",
+  "auto_compact_tools": true
 }
 ```
 
@@ -250,6 +251,7 @@ def cmd_note(arg, ctx):
 | `/compact` | `/compact` | Summarize session and replace history |
 | `/compact_tools` | `/compact_tools` | Compact tool results into a summary |
 | `/tools` | `/tools [enable/disable] <tool>` | List, enable, or disable tools |
+| `/auto_compact_tools` | `/auto_compact_tools [enable/disable]` | Enable or disable auto tool compaction |
 | `/model` | `/model [name]` | Show or switch the active Ollama model |
 | `/tree` | `/tree <path> <depth>` | Print directory tree |
 | `/ls` | `/ls <path>` | List directory contents |
@@ -264,7 +266,6 @@ def cmd_note(arg, ctx):
 - `/mode` - toggle careful/auto HITL aggressiveness
 - `/retry` - resend last user message
 - `/history` - print condensed message log
-- `/plan` - prevent context window limit, optimize token usage
 
 > - Maybe in the future MCP servers and custom skills idk
 

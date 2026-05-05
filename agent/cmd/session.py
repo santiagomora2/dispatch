@@ -1,7 +1,7 @@
 from rich.console import Console
 from rich.prompt import Confirm
 from agent.cmd import COMMANDS, command
-from agent.paths import MEMORY_FILE
+from agent.paths import MEMORY_FILE, CONFIG_FILE
 from agent.fancy_banner import say_bye
 from agent.tools.session import compact_conversation, compact_tool_results
 from agent.tools import TOOLS, LAZY, enable_tool, disable_tool
@@ -56,6 +56,11 @@ def cmd_model(arg, ctx):
         console.print(f"[dim]Available: {', '.join(available)}[/dim]")
         return
     ctx["model"] = arg
+    # modify the config.json file
+    config = json.loads(CONFIG_FILE.read_text())
+    config["model"] = arg
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(config, f)
     console.print(f"[green]Switched to: {arg}[/green]")
 
 @command("help", description="Show help information", usage="")
@@ -169,3 +174,19 @@ def cmd_tools(arg, ctx):
             console.print(f"[yellow]○ Disabled: {name}[/yellow]")
         else:
             console.print(f"[red]Not found in active tools: {name}[/red]")
+
+@command("auto_compact_tools", description="Enable or disable tool auto-compaction (after 5 succesive tool calls)", usage="[enable|disable]", arg_completer=lambda: ["enable", "disable"])
+def cmd_auto_compact(arg, ctx):
+    if arg not in ("enable", "disable"):
+        console.print("[red]Usage: /auto_compact_tools enable | /auto_compact_tools disable [/red]")
+        return
+    # modify the config.json file
+    config = json.loads(CONFIG_FILE.read_text())
+    if arg == "enable":
+        config["auto_compact_tools"] = True
+        console.print(f"[green]✓ Enabled[/green]")
+    elif arg == "disable":
+        config["auto_compact_tools"] = False
+        console.print(f"[green]✓ Disabled[/green]")
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(config, f)
