@@ -52,11 +52,11 @@ def run():
     "messages": messages,
     "model": config["model"],
     "config": config,
-    "system_prompt": system_prompt  # ← add this
+    "system_prompt": system_prompt,
     }
     session = PromptSession(completer=SlashCompleter())
 
-    print_banner(model, config.get("version", "0.1.0"))
+    print_banner(model, config.get("version", "0.1.2"))
 
     # Main loop
     while True:
@@ -171,7 +171,7 @@ def run():
             pending_tool_response = True
 
             # If the tool calls returned a lot of content, compact before re-entering the model loop.
-            if tokens_this_turn > ctx["config"]["context_limit"] * 0.50 or tool_calls_this_turn > 5:
+            if (tokens_this_turn > ctx["config"]["context_limit"] * 0.50 or tool_calls_this_turn > 5) and ctx["config"].get("auto_compact_tools", True):
                 do_tool_compact(ctx, messages)
                 # Reset counts after compacting
                 tokens_this_turn, tool_calls_this_turn = 0, 0
