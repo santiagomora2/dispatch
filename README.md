@@ -12,7 +12,7 @@ A local AI agent harness written in python, built on ollama; with tool calling, 
 
 > Dispatch does not intend to compete with Claude Code, DeepAgents, OpenCode or other famous CLIs.
 
-> It is a tool I built for the love of the game, and is meant to be an easy-to-understand, easily-to-modify, light-weight, local CLI agent that you can study to understand how popular agentic systems and famous Agentic AI CLIs work. 
+> It is a tool I built for the love of the game, and is meant to be an easy-to-understand, easy-to-modify, lightweight, local CLI agent that you can study to understand how popular agentic systems and famous Agentic AI CLIs work. 
 
 ---
 
