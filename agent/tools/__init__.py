@@ -37,4 +37,4 @@ def disable_tool(name):
 
 # imports — mark lazy tools
 from agent.tools import files, memory  # noqa
-from agent.tools import web, shell     # noqa  (mark these lazy=True in their decorators)
+from agent.tools import web, shell

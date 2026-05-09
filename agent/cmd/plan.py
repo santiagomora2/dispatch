@@ -1,6 +1,9 @@
+### Plan Command Implementation (Local Mode) ###
+
 import re
 import uuid
-import ollama
+import json
+import requests
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.prompt import Confirm
@@ -8,10 +11,66 @@ from agent.cmd import command
 from agent.system_prompt import build_system_prompt
 from agent.tools import dispatch, get_schemas
 from agent.paths import PLANS_DIR
-import json
 
 console = Console()
 
+# Configuración del servidor local
+API_URL = "http://127.0.0.1:8080/v1"
+MODEL_NAME = "Qwen3-1.7B"
+
+def _call_local_llm(messages, stream=False, tools=None):
+    """
+    Función auxiliar para comunicarse con el servidor llama.cpp local.
+    Reemplaza a ollama.chat().
+    """
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer sk-llama.cpp"
+    }
+    
+    payload = {
+        "model": MODEL_NAME,
+        "messages": messages,
+        "stream": stream,
+        "temperature": 0.6  # Temperatura moderada para planificación
+    }
+    
+    if tools:
+        payload["tools"] = tools
+        payload["tool_choice"] = "auto"
+
+    try:
+        response = requests.post(
+            f"{API_URL}/chat/completions",
+            headers=headers,
+            json=payload,
+            stream=stream
+        )
+        response.raise_for_status()
+        
+        if stream:
+            # Generador para streaming
+            for line in response.iter_lines():
+                if line:
+                    decoded = line.decode('utf-8')
+                    if decoded.startswith('data: '):
+                        data_str = decoded[6:]
+                        if data_str.strip() == '[DONE]':
+                            break
+                        try:
+                            chunk = json.loads(data_str)
+                            yield chunk
+                        except json.JSONDecodeError:
+                            pass
+        else:
+            # Respuesta completa (síncrona)
+            return response.json()
+            
+    except Exception as e:
+        console.print(f"[red]Error de conexión al servidor: {str(e)}[/red]")
+        if stream:
+            return
+        return {"choices": [{"message": {"content": f"Error: {str(e)}"}}]}
 
 def plan(task: str, messages: list, model: str, ctx: dict):
     """
@@ -20,7 +79,6 @@ def plan(task: str, messages: list, model: str, ctx: dict):
      2. Sequence & Assess Risks: Order the subtasks and note potential risks.
      3. Finalize Plan: Output a structured markdown plan with steps and placeholders for decisions/artifacts.
      4. Execute Sequentially: For each step, run it in isolation, allowing tool calls, and update the plan file with progress and artifacts.
-     The plan is saved as a markdown file in the plans/ directory with a unique ID.
     """
     plan_messages = [
         {"role": "system", "content": build_system_prompt()},
@@ -34,8 +92,9 @@ def plan(task: str, messages: list, model: str, ctx: dict):
         "Then break it down into discrete, atomic subtasks."
     )})
     with console.status("[yellow]Understanding request...[/yellow]", spinner="dots"):
-        r = ollama.chat(model=model, messages=plan_messages)
-        plan_messages.append({"role": "assistant", "content": r.message.content})
+        r = _call_local_llm(plan_messages)
+        content = r["choices"][0]["message"]["content"]
+        plan_messages.append({"role": "assistant", "content": content})
 
     # Stage 2: Sequence + Risks
     plan_messages.append({"role": "user", "content": (
@@ -43,8 +102,9 @@ def plan(task: str, messages: list, model: str, ctx: dict):
         "For each step, briefly note what could go wrong and how to handle it."
     )})
     with console.status("[yellow]Sequencing and assessing risks...[/yellow]", spinner="dots"):
-        r = ollama.chat(model=model, messages=plan_messages)
-        plan_messages.append({"role": "assistant", "content": r.message.content})
+        r = _call_local_llm(plan_messages)
+        content = r["choices"][0]["message"]["content"]
+        plan_messages.append({"role": "assistant", "content": content})
 
     # Stage 3: Final structured plan as markdown
     plan_messages.append({"role": "user", "content": (
@@ -62,13 +122,12 @@ def plan(task: str, messages: list, model: str, ctx: dict):
         "Each step must start with a number and period. Be concise — one line per step."
     )})
     with console.status("[yellow]Finalizing plan...[/yellow]", spinner="dots"):
-        r = ollama.chat(model=model, messages=plan_messages)
-        raw_plan = r.message.content
+        r = _call_local_llm(plan_messages)
+        raw_plan = r["choices"][0]["message"]["content"]
 
     # Parse steps
     steps = re.findall(r"^\s*-\s*\[[ x]\]\s*\d+\.\s+(.+)$", raw_plan, re.MULTILINE)
     if not steps:
-        # fallback: try plain numbered list
         steps = re.findall(r"^\d+\.\s+(.+)$", raw_plan, re.MULTILINE)
     if not steps:
         console.print("[red]Could not parse plan into steps. Raw output:[/red]")
@@ -144,34 +203,44 @@ def _build_step_messages(system_prompt, step, i, total, plan_md):
 
 def _update_plan_file(step, i, plan_file, model):
     current = plan_file.read_text()
-    r = ollama.chat(model=model, messages=[{"role": "user", "content": (
+    prompt = (
         f"Update this plan file: mark step {i} as completed (change [ ] to [x]) "
         f"and add any artifacts or decisions made to ## Decisions & Artifacts. "
         f"Update ## Current Step to {i + 1}. "
         f"Return only the updated markdown, nothing else.\n\n"
         f"STEP COMPLETED: {step}\n\n"
         f"PLAN:\n{current}"
-    )}])
-    plan_file.write_text(r.message.content)
+    )
+    
+    r = _call_local_llm([{"role": "user", "content": prompt}])
+    updated_content = r["choices"][0]["message"]["content"]
+    plan_file.write_text(updated_content)
 
 
 def _run_agent_turn(messages, model, ctx):
     """Run one full agent turn with tool calls using isolated step context."""
     pending = True
     while pending:
-        stream = ollama.chat(model=model, messages=messages, tools=get_schemas(), stream=True)
+        # Usar generador local para streaming
+        stream_gen = _call_local_llm(messages, stream=True, tools=get_schemas())
         full_content = ""
         tool_calls = []
 
         console.print("[bold green]dispatch>[/bold green] ", end="")
         try:
-            for chunk in stream:
-                msg = chunk.message
-                if msg.content:
-                    console.print(msg.content, end="", highlight=False)
-                    full_content += msg.content
-                if msg.tool_calls:
-                    tool_calls.extend(msg.tool_calls)
+            for chunk in stream_gen:
+                delta = chunk.get("choices", [{}])[0].get("delta", {})
+                content = delta.get("content", "")
+                delta_tools = delta.get("tool_calls", [])
+                
+                if content:
+                    console.print(content, end="", highlight=False)
+                    full_content += content
+                if delta_tools:
+                    # Acumular tool calls (formato compatible)
+                    for tc in delta_tools:
+                        tool_calls.append(tc)
+                        
         except KeyboardInterrupt:
             console.print("\n[yellow]↩ Interrupted.[/yellow]")
             return
@@ -182,8 +251,16 @@ def _run_agent_turn(messages, model, ctx):
 
         if tool_calls:
             for call in tool_calls:
-                name = call.function.name
-                args = call.function.arguments
+                # Extraer nombre y argumentos del formato de tool call
+                func = call.get("function", call) if isinstance(call, dict) else call
+                name = func.get("name")
+                args = func.get("arguments", {})
+                if isinstance(args, str):
+                    try:
+                        args = json.loads(args)
+                    except:
+                        args = {}
+                        
                 console.print(f"[dim]→ tool: {name}({args})[/dim]")
                 result = dispatch(name, args)
                 messages.append({"role": "tool", "content": json.dumps(result), "name": name})

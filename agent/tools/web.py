@@ -1,4 +1,5 @@
-from ddgs import DDGS
+# agent/tools/web.py
+from duckduckgo_search import DDGS  # ← Corregido para v8+
 import httpx
 import trafilatura
 import re
