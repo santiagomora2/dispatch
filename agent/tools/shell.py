@@ -9,6 +9,9 @@ console = Console()
 
 
 def stream_shell_command(cmd: str, timeout: int = 300):
+    """
+    Run a shell command in the current working directory, streaming output line by line.
+    Output is truncated after 2000 lines or if the command runs longer than the specified timeout (default 300s)"""
     # Show the command and ask for confirmation before running anything
     console.print(f"[bold cyan]➜ {INVOCATION_DIR.name}[/bold cyan] $ {cmd}")
     console.print()
@@ -31,6 +34,7 @@ def stream_shell_command(cmd: str, timeout: int = 300):
         )
 
         output_buffer = ""
+        line_count = 0
 
         # Kill the process if it exceeds the timeout.
         # threading.Timer fires process.kill() after `timeout` seconds
@@ -41,8 +45,14 @@ def stream_shell_command(cmd: str, timeout: int = 300):
         try:
             timer.start()
             for line in process.stdout:
-                console.print(line, end="")
-                output_buffer += line
+                if line_count < 2000:
+                    console.print(line, end="")
+                    output_buffer += line
+                    line_count += 1
+                elif line_count == 2000:
+                    console.print("[bold red]Output truncated after 2000 lines.[/bold red]")
+                    output_buffer += "\n[Output truncated after 2000 lines.]\n"
+                    line_count += 1
         except Exception:
             pass
         finally:
@@ -73,13 +83,8 @@ def stream_shell_command(cmd: str, timeout: int = 300):
     "function": {
         "name": "run_shell",
         "description": (
-            "Run a shell command with human confirmation, streaming output line by line.\n\n"
-            "Always confirm with the user before running. Use for:\n"
-            "- Running scripts: 'python script.py'\n"
-            "- Installing packages: 'pip install requests'\n"
-            "- Git operations: 'git status', 'git diff'\n"
-            "- Searching: 'grep -r \"TODO\" .'\n"
-            "- Any system command that needs to run in the project directory"
+            "Run a shell command in the current working directory, streaming output line by line.\n\n"
+            "Output is truncated after 2000 lines or if the command runs longer than the specified timeout"
         ),
         "parameters": {
             "type": "object",

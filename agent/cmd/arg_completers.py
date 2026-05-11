@@ -1,13 +1,13 @@
 ### Argument completer functions for commands ###
 
-import ollama
+from agent.providers import list_models
 
 def get_available_models():
     """
-    Get available models from ollama, return empty list if there's an error.
+    Get available models from active provider, return empty list if there's an error.
     """
     try:
-        return [m.model for m in ollama.list().models]
+        return list_models()
     except Exception:
         return []
     

@@ -7,6 +7,7 @@ from agent.tools.session import compact_conversation, compact_tool_results
 from agent.tools import TOOLS, LAZY, enable_tool, disable_tool
 import json
 from agent.cmd.arg_completers import get_available_models, get_tool_names
+from agent.providers import SUPPORTED
 
 console = Console()
 
@@ -35,24 +36,25 @@ def cmd_reset(arg, ctx):
     console.print("[yellow]Full reset done.[/yellow]")
 
 @command("model",
-         description="Switch the active Ollama model",
+         description="Switch the active model",
          usage="<model>",
          arg_completer=get_available_models)
 def cmd_model(arg, ctx):
     """
-    Switches the active Ollama model. 
+    Switches the active model for the current provider.
     If no argument is given, shows the current model and available models.
     Usage: /model <model>
     """
     available = get_available_models()
     if not arg:
         console.print(f"[cyan]Current: {ctx['model']}[/cyan]")
+        console.print(f"[dim]Provider: {ctx['config'].get('provider', 'ollama')}[/dim]")
         console.print("[dim]Available:[/dim]")
         for m in available:
             console.print(f"  [dim]{m}[/dim]")
         return
-    if arg not in available:
-        console.print(f"[red]Model '{arg}' not found in Ollama.[/red]")
+    if available and arg not in available:
+        console.print(f"[red]Model '{arg}' not found for provider '{ctx['config'].get('provider', 'ollama')}'.[/red]")
         console.print(f"[dim]Available: {', '.join(available)}[/dim]")
         return
     ctx["model"] = arg
@@ -61,7 +63,32 @@ def cmd_model(arg, ctx):
     config["model"] = arg
     with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
         json.dump(config, f)
+    ctx["config"]["model"] = arg
     console.print(f"[green]Switched to: {arg}[/green]")
+
+@command("provider",
+         description="Switch active model provider. WARNING: resets session.",
+         usage="<ollama|openai-compatible>",
+         arg_completer=lambda: SUPPORTED)
+def cmd_provider(arg, ctx):
+    if not arg:
+        console.print(f"[cyan]Current provider: {ctx['config'].get('provider', 'ollama')}[/cyan]")
+        return
+    if arg not in SUPPORTED:
+        console.print(f"[red]Unsupported provider: {arg}[/red]")
+        console.print(f"[dim]Supported: {', '.join(SUPPORTED)}[/dim]")
+        return
+    config = json.loads(CONFIG_FILE.read_text())
+    config["provider"] = arg
+    with open(CONFIG_FILE, 'w', encoding='utf-8') as f:
+        json.dump(config, f)
+    ctx["config"]["provider"] = arg
+    # Provider switch can change message format requirements (tool_call_id, etc),
+    # so reset conversation while keeping memory/system prompt.
+    ctx["messages"].clear()
+    ctx["messages"].append({"role": "system", "content": ctx["system_prompt"]})
+    console.print(f"[green]Provider set to: {arg}[/green]")
+    console.print("[yellow]Session cleared after provider switch.[/yellow]")
 
 @command("help", description="Show help information", usage="")
 def cmd_help(arg, ctx):
@@ -98,7 +125,7 @@ def do_compact(ctx, messages):
     The original messages are replaced with a system message containing the summary.
     """
     with console.status("[yellow]Compacting session...[/yellow]", spinner="dots"):
-        summary = compact_conversation(messages, ctx["model"])
+        summary = compact_conversation(messages, ctx["model"], config=ctx["config"])
     
     system = messages[0]
     messages.clear()
@@ -113,7 +140,7 @@ def do_tool_compact(ctx, messages):
     The original tool messages are replaced with one summary message.
     """
     with console.status("[yellow]Compacting tool results...[/yellow]", spinner="dots"):
-        new_messages = compact_tool_results(messages, ctx["model"])
+        new_messages = compact_tool_results(messages, ctx["model"], config=ctx["config"])
     
     messages.clear()
     messages.extend(new_messages)
@@ -132,8 +159,6 @@ def cmd_compact_tools(arg, ctx):
     Compacts the tool result messages by summarizing them into a shorter form.
     """
     do_tool_compact(ctx, ctx["messages"])
-
-from agent.tools import TOOLS, LAZY, enable_tool, disable_tool
 
 @command("tools",
          description="List, enable, or disable tools",

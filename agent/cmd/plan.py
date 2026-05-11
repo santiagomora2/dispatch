@@ -1,6 +1,5 @@
 import re
 import uuid
-import ollama
 from rich.console import Console
 from rich.markdown import Markdown
 from rich.prompt import Confirm
@@ -8,6 +7,7 @@ from agent.cmd import command
 from agent.system_prompt import build_system_prompt
 from agent.tools import dispatch, get_schemas
 from agent.paths import PLANS_DIR
+from agent.providers import chat
 import json
 
 console = Console()
@@ -34,8 +34,8 @@ def plan(task: str, messages: list, model: str, ctx: dict):
         "Then break it down into discrete, atomic subtasks."
     )})
     with console.status("[yellow]Understanding request...[/yellow]", spinner="dots"):
-        r = ollama.chat(model=model, messages=plan_messages)
-        plan_messages.append({"role": "assistant", "content": r.message.content})
+        r = chat(model=model, messages=plan_messages, config=ctx["config"])
+        plan_messages.append({"role": "assistant", "content": r["message"]["content"]})
 
     # Stage 2: Sequence + Risks
     plan_messages.append({"role": "user", "content": (
@@ -43,8 +43,8 @@ def plan(task: str, messages: list, model: str, ctx: dict):
         "For each step, briefly note what could go wrong and how to handle it."
     )})
     with console.status("[yellow]Sequencing and assessing risks...[/yellow]", spinner="dots"):
-        r = ollama.chat(model=model, messages=plan_messages)
-        plan_messages.append({"role": "assistant", "content": r.message.content})
+        r = chat(model=model, messages=plan_messages, config=ctx["config"])
+        plan_messages.append({"role": "assistant", "content": r["message"]["content"]})
 
     # Stage 3: Final structured plan as markdown
     plan_messages.append({"role": "user", "content": (
@@ -62,8 +62,8 @@ def plan(task: str, messages: list, model: str, ctx: dict):
         "Each step must start with a number and period. Be concise — one line per step."
     )})
     with console.status("[yellow]Finalizing plan...[/yellow]", spinner="dots"):
-        r = ollama.chat(model=model, messages=plan_messages)
-        raw_plan = r.message.content
+        r = chat(model=model, messages=plan_messages, config=ctx["config"])
+        raw_plan = r["message"]["content"]
 
     # Parse steps
     steps = re.findall(r"^\s*-\s*\[[ x]\]\s*\d+\.\s+(.+)$", raw_plan, re.MULTILINE)
@@ -111,7 +111,7 @@ def plan(task: str, messages: list, model: str, ctx: dict):
         _run_agent_turn(step_messages, model, ctx)
 
         # Update plan file — mark step done
-        _update_plan_file(step, i, plan_file, model)
+        _update_plan_file(step, i, plan_file, model, ctx["config"])
         completed.append(i)
 
     # Final checklist
@@ -142,36 +142,36 @@ def _build_step_messages(system_prompt, step, i, total, plan_md):
     ]
 
 
-def _update_plan_file(step, i, plan_file, model):
+def _update_plan_file(step, i, plan_file, model, config):
     current = plan_file.read_text()
-    r = ollama.chat(model=model, messages=[{"role": "user", "content": (
+    r = chat(model=model, messages=[{"role": "user", "content": (
         f"Update this plan file: mark step {i} as completed (change [ ] to [x]) "
         f"and add any artifacts or decisions made to ## Decisions & Artifacts. "
         f"Update ## Current Step to {i + 1}. "
         f"Return only the updated markdown, nothing else.\n\n"
         f"STEP COMPLETED: {step}\n\n"
         f"PLAN:\n{current}"
-    )}])
-    plan_file.write_text(r.message.content)
+    )}], config=config)
+    plan_file.write_text(r["message"]["content"])
 
 
 def _run_agent_turn(messages, model, ctx):
     """Run one full agent turn with tool calls using isolated step context."""
     pending = True
     while pending:
-        stream = ollama.chat(model=model, messages=messages, tools=get_schemas(), stream=True)
+        stream = chat(model=model, messages=messages, tools=get_schemas(), stream=True, config=ctx["config"])
         full_content = ""
         tool_calls = []
 
         console.print("[bold green]dispatch>[/bold green] ", end="")
         try:
             for chunk in stream:
-                msg = chunk.message
-                if msg.content:
-                    console.print(msg.content, end="", highlight=False)
-                    full_content += msg.content
-                if msg.tool_calls:
-                    tool_calls.extend(msg.tool_calls)
+                msg = chunk.get("message", {})
+                if msg.get("content"):
+                    console.print(msg["content"], end="", highlight=False)
+                    full_content += msg["content"]
+                if msg.get("tool_calls"):
+                    tool_calls.extend(msg["tool_calls"])
         except KeyboardInterrupt:
             console.print("\n[yellow]↩ Interrupted.[/yellow]")
             return
@@ -182,11 +182,16 @@ def _run_agent_turn(messages, model, ctx):
 
         if tool_calls:
             for call in tool_calls:
-                name = call.function.name
-                args = call.function.arguments
+                name = call.get("function", {}).get("name")
+                args = call.get("function", {}).get("arguments", {})
                 console.print(f"[dim]→ tool: {name}({args})[/dim]")
                 result = dispatch(name, args)
-                messages.append({"role": "tool", "content": json.dumps(result), "name": name})
+                messages.append({
+                    "role": "tool",
+                    "content": json.dumps(result),
+                    "name": name,
+                    "tool_call_id": call.get("id"),
+                })
         else:
             pending = False
 

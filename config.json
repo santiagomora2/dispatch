@@ -1,1 +1,1 @@
-{"model": "qwen3.5:9b", "context_limit": 32000, "mode": "auto", "version": "0.1.2", "auto_compact_tools": true}
+{"provider": "ollama", "model": "qwen3.5:9b", "context_limit": 64000, "mode": "auto", "version": "1.0.0", "auto_compact_tools": false, "openai_base_url": "http://localhost:8000/v1", "openai_api_key_env": "OPENAI_API_KEY"}

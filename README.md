@@ -8,7 +8,9 @@
 ╚═════╝ ╚═╝╚══════╝╚═╝     ╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝
 ```
 
-A local AI agent harness written in python, built on ollama; with tool calling, streaming, and a persistent memory system.
+[![CI](https://github.com/santiagomora2/dispatch/actions/workflows/ci.yml/badge.svg)](https://github.com/santiagomora2/dispatch/actions/workflows/ci.yml)
+
+A local AI agent harness written in python, built on ollama/openai-compatible providers; with tool calling, streaming, and a persistent memory system. Stripped down to be simple, contain only necessary tools, and not fill up memory with system prompts and unnecesary text.
 
 > Dispatch does not intend to compete with Claude Code, DeepAgents, OpenCode or other famous CLIs.
 
@@ -85,16 +87,29 @@ uv tool install --editable .
 
 ### Configure
 
-Update `config.json` in the dispatch directory to match your Ollama model:
+Update `config.json` in the dispatch directory:
 
 ```json
 {
+  "provider": "ollama",
   "model": "qwen3.5:9b",
   "context_limit": 32000,
   "mode": "auto",
-  "version": "0.1.2",
-  "auto_compact_tools": true
+  "version": "1.0.0",
+  "auto_compact_tools": true,
+  "openai_base_url": "http://localhost:8000/v1",
+  "openai_api_key_env": "OPENAI_API_KEY"
 }
+```
+
+If using `openai-compatible`, export your API key:
+```bash
+export OPENAI_API_KEY=your_key_here
+```
+
+Or if you're going local and not using any:
+```bash
+export OPENAI_API_KEY="local"
 ```
 
 Then run:
@@ -112,32 +127,32 @@ Dispatch operates on your current directory while keeping memory and config at t
 dispatch/
 ├── agent/
 │   ├── cmd/
-│   │   ├── __init__.py     # registry + dispatch
-│   │   ├── arg_completers.py        # contains arg_completer functions for commands
-│   │   ├── files.py        # file commands (/tree, /ls etc.)
-│   │   ├── memory.py.      # memory commands (/note, /forget, etc.)
-│   │   ├── plan.py         # plan command
-│   │   └── session.py      # session commands (/clear, /compact, /model, etc.)
+│   │   ├── __init__.py         # registry + dispatch
+│   │   ├── arg_completers.py   # contains arg_completer functions for commands
+│   │   ├── memory.py.          # memory commands (/note, /forget, etc.)
+│   │   ├── plan.py             # plan command
+│   │   └── session.py          # session commands (/clear, /compact, /model, etc.)
 │   ├── tools/
-│   │   ├── __init__.py     # registry + dispatch + get_schemas
-│   │   ├── files.py        # file tools (read_file, patch_file, tree, etc.)
-│   │   ├── memory.py       # memory tools (add_fact, forget_fact, etc.)
-│   │   ├── session.py      # compact conversation (not callable, handled in main loop)
-│   │   ├── shell.py.       # shell tools (run_shell)
-│   │   └── web.py          # web search tools (web_search, fetch_url)
-│   ├── plans/              # directory where agent's plans and statuses are logged
+│   │   ├── __init__.py         # registry + dispatch + get_schemas
+│   │   ├── files.py            # file tools (read, write, patch)
+│   │   ├── memory.py           # memory tools (update_memory)
+│   │   ├── session.py          # compact conversation (not callable, handled in main loop)
+│   │   ├── shell.py.           # shell tools (run_shell)
+│   │   └── web.py              # web search tools (web_search, fetch_url)
+│   ├── plans/                  # directory where agent's plans and statuses are logged
 │   ├── __init__.py
-│   ├── agent.py            # main loop
-│   ├── completer.py        # slash commands auto-completer
-│   ├── fancy_banner.py     # fancy welcome banner, ways to goodbye 
-│   ├── main.py             # CLI entrypoint (typer)
-│   ├── paths.py            # ROOT-anchored file
-│   └── system_prompt.py    # system prompt
+│   ├── agent.py                # main loop
+│   ├── completer.py            # slash commands auto-completer
+│   ├── fancy_banner.py         # fancy welcome banner, ways to goodbye 
+│   ├── main.py                 # CLI entrypoint (typer)
+│   ├── paths.py                # ROOT-anchored file
+│   ├── providers/              # provider abstraction (ollama/openai-compatible)
+│   └── system_prompt.py        # system prompt
 ├── README.md               
-├── config.json             # model, context_limit, mode
-├── memory.md               # persistent agent memory
-├── pyproject.toml          # entry point: `dispatch` command
-├── session.json            # last compact summary
+├── config.json                 # provider, model, context_limit, mode
+├── memory.md                   # persistent agent memory
+├── pyproject.toml              # entry point: `dispatch` command
+├── session.json                # last compact summary
 └── uv.lock
 ```
 
@@ -149,7 +164,7 @@ dispatch/
 
 1. `dispatch` is invoked from anywhere in the terminal
 2. `main.py` calls `run()` in `agent.py`
-3. `agent.py` loads `config.json` (model, context limit, mode)
+3. `agent.py` loads `config.json` (provider, model, context limit, mode)
 4. `memory.md` is read and injected into the system prompt
 5. The message history is initialized with the system prompt
 6. The main loop starts
@@ -168,7 +183,7 @@ START
 ├── check token estimate > 80% limit?
 │   YES ──> compact conversation (summarize history) ──> continue
 │
-├── call ollama.chat(stream=True, tools=get_schemas())
+├── call providers.chat(stream=True, tools=get_schemas())
 │   └── stream chunks to terminal as they arrive
 │       ├── text content ──> print immediately
 │       └── tool_calls ──> accumulate, execute after stream ends
@@ -227,17 +242,14 @@ def cmd_note(arg, ctx):
 
 | Tool | File | What it does |
 |---|---|---|
+| `run_shell` | `tools/shell.py` | Run a shell command with human confirmation, streaming output line by line |
 | `read_file` | `tools/files.py` | Reads a file, returns content with line numbers |
 | `create_file` | `tools/files.py` | Creates a file with an initial skeleton |
 | `patch_file` | `tools/files.py` | Replaces, inserts, or deletes content via `old_str/new_str` |
-| `append_file` | `tools/files.py` | Appends content to end of existing file |
-| `find_pattern` | `tools/files.py` | Glob search for files matching a pattern |
-| `list_dir` | `tools/files.py` | Lists files and dirs at a path |
-| `tree` | `tools/files.py` | Prints a directory tree up to a given depth |
 | `update_memory` | `tools/memory.py` | Update a section of the agent's persistent memory markdown file|
-| `web_search` | `tools/web.py` | Searches the web for relevant URLs |
-| `fetch_url` | `tools/web.py` | Fetches the content from a given URL, parses it as Markdown (`jina` + `tralifatura` fallback) |
-| `run_shell` | `tools/shell.py` | Run a shell command with human confirmation, streaming output line by line |
+| `web_search` | `tools/web.py` | (lazy) Searches the web for relevant URLs |
+| `fetch_url` | `tools/web.py` | (lazy) Fetches the content from a given URL, parses it as Markdown (`jina` + `tralifatura` fallback) |
+
 
 ## Current Slash Commands
 
@@ -246,13 +258,15 @@ def cmd_note(arg, ctx):
 | `/memory` | `/memory` | Print current memory.md |
 | `/note` | `/note <text>` | Append a fact to memory directly |
 | `/forget` | `/forget <section>` | Clear a memory section |
+| `/remember` | `/remember` | Injects memory into the agent|
 | `/clear` | `/clear` | Reset messages, keep memory |
 | `/reset` | `/reset` | Reset messages and memory |
 | `/compact` | `/compact` | Summarize session and replace history |
 | `/compact_tools` | `/compact_tools` | Compact tool results into a summary |
 | `/tools` | `/tools [enable/disable] <tool>` | List, enable, or disable tools |
 | `/auto_compact_tools` | `/auto_compact_tools [enable/disable]` | Enable or disable auto tool compaction |
-| `/model` | `/model [name]` | Show or switch the active Ollama model |
+| `/model` | `/model [name]` | Show or switch the active model |
+| `/provider` | `/provider [ollama/openai-compatible]` | Show or switch the active provider |
 | `/tree` | `/tree <path> <depth>` | Print directory tree |
 | `/ls` | `/ls <path>` | List directory contents |
 | `/plan` | `/plan <task>` | Generate and execute a step-by-step plan |

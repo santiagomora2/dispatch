@@ -9,7 +9,7 @@ WAYS_TO_BYE = ["See ya.", "Catch you later.", "Take it easy.", "*dap*", "Peace o
 
 console = Console()
 
-def print_banner(model: str, version: str = "0.1.0"):
+def print_banner(model: str, version: str = "1.0.0"):
     """
     Print a fancy banner with the agent's name, version, current model, and some helpful tips.
     The banner is designed to fit within the terminal width, with an ASCII art logo on the left

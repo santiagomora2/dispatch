@@ -1,12 +1,12 @@
 import json
-import ollama
 from agent.paths import SESSION_FILE
+from agent.providers import chat
 
 
 # No tool decorator here since this is a cmd, not a tool.
 # The agent doesn't decide when to compact, but the user can trigger it.
 # If config[context_limit] is at 80%, auto_compact will be handled in main agent.py loop.
-def compact_conversation(messages, model):
+def compact_conversation(messages, model, config=None):
     """
     Compacts the conversation history by summarizing it into a shorter form.
     This is useful for keeping the conversation history manageable while retaining context.
@@ -18,7 +18,7 @@ def compact_conversation(messages, model):
         if m["role"] != "system"
     )
 
-    response = ollama.chat(model=model, messages=[{
+    response = chat(model=model, messages=[{
         "role": "user",
         "content": (
             "Summarize this conversation as a dense agent briefing. Include:\n"
@@ -30,13 +30,13 @@ def compact_conversation(messages, model):
             "If there's a user prompt at the end, proceed with the summarization and append the user query at the end.\n\n"
             f"CONVERSATION:\n{history_text}"
         )
-    }])
+    }], config=config)
 
-    summary = response.message.content
+    summary = response["message"]["content"]
     SESSION_FILE.write_text(json.dumps({"summary": summary}, indent=2))
     return summary
 
-def compact_tool_results(messages, model):
+def compact_tool_results(messages, model, config=None):
     """
     Compacts tool result messages by summarizing them into a shorter form.
     This is useful for keeping the conversation history manageable while retaining important tool outputs.
@@ -48,11 +48,11 @@ def compact_tool_results(messages, model):
         return messages
     
     combined = "\n".join(m["content"] for m in tool_msgs)
-    summary = ollama.chat(model=model, messages=[{
+    summary = chat(model=model, messages=[{
         "role": "user",
         "content": f"""Summarize these tool results concisely, keeping only what's useful for the task. 
         Specify whether each tool call resulted in a positive, negative, or neutral outcome:\n{combined}"""
-    }]).message.content
+    }], config=config)["message"]["content"]
 
     # replace all tool messages with one summary
     new_messages = [m for m in messages if m["role"] != "tool"]
