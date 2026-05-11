@@ -247,8 +247,6 @@ def cmd_note(arg, ctx):
 | `create_file` | `tools/files.py` | Creates a file with an initial skeleton |
 | `patch_file` | `tools/files.py` | Replaces, inserts, or deletes content via `old_str/new_str` |
 | `update_memory` | `tools/memory.py` | Update a section of the agent's persistent memory markdown file|
-| `web_search` | `tools/web.py` | (lazy) Searches the web for relevant URLs |
-| `fetch_url` | `tools/web.py` | (lazy) Fetches the content from a given URL, parses it as Markdown (`jina` + `tralifatura` fallback) |
 
 
 ## Current Slash Commands
