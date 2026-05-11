@@ -8,7 +8,24 @@
 ╚═════╝ ╚═╝╚══════╝╚═╝     ╚═╝  ╚═╝   ╚═╝    ╚═════╝╚═╝  ╚═╝
 ```
 
-[![CI](https://github.com/santiagomora2/dispatch/actions/workflows/ci.yml/badge.svg)](https://github.com/santiagomora2/dispatch/actions/workflows/ci.yml)
+ <p align="center">
+   <a href="https://github.com/santiagomora2/dispatch/actions/workflows/ci.yml"><img 
+src="https://github.com/santiagomora2/dispatch/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+   <a href="https://github.com/santiagomora2/dispatch/stargazers"><img 
+src="https://img.shields.io/github/stars/santiagomora2/dispatch?style=social" alt="Stars"></a>
+   <a href="https://github.com/santiagomora2/dispatch/network/members"><img 
+src="https://img.shields.io/github/forks/santiagomora2/dispatch?style=social" alt="Forks"></a>
+   <a href="https://github.com/santiagomora2/dispatch/issues"><img src="https://img.shields.io/github/issues/santiagomora2/dispatch" 
+alt="Issues"></a>
+   <a href="https://github.com/santiagomora2/dispatch/blob/main/LICENSE.md"><img 
+src="https://img.shields.io/github/license/santiagomora2/dispatch" alt="License"></a>
+ </p>
+ 
+ <p align="center">
+   <a href="https://pypi.org/project/dispatch-agent/"><img src="https://img.shields.io/pypi/v/dispatch-agent" alt="PyPI version"></a>
+   <a href="https://pypi.org/project/dispatch-agent/"><img src="https://img.shields.io/pypi/dm/dispatch-agent" alt="PyPI downloads"></a>
+   <a href="https://pypi.org/project/dispatch-agent/"><img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+"></a>
+ </p>
 
 A local AI agent harness written in python, built on ollama/openai-compatible providers; with tool calling, streaming, and a persistent memory system. Stripped down to be simple, contain only necessary tools, and not fill up memory with system prompts and unnecesary text.
 
