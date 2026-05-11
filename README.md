@@ -57,7 +57,13 @@ A local AI agent harness written in python, built on ollama/openai-compatible pr
 
 Before installing Dispatch, ensure you have:
 
-**1. Ollama installed and running**
+**1. Python 3.11+**
+
+Dispatch itself only requires Python. Model provider is configurable.
+
+**2. One model provider (choose one)**
+
+#### Option A: Ollama (local)
 
 Download from [ollama.com](https://ollama.com) or install via package manager:
 
@@ -72,18 +78,18 @@ curl -fsSL https://ollama.com/install.sh | sh
 # Download installer from https://ollama.com/download
 ```
 
-Start the server:
+Start the server and pull a model:
+
 ```bash
 ollama serve
+ollama pull qwen3.5:9b
 ```
 
-**2. A model that supports tool calling**
+#### Option B: OpenAI-compatible endpoint
 
-```bash
-# Recommended options:
-ollama pull qwen3.5:9b       # Fast, excellent tool calling
-ollama pull gemma4:e4b       # Strong reasoning
-```
+Use any server implementing the OpenAI Chat Completions API (local or hosted), for example LM Studio, vLLM, OpenRouter-compatible gateways, etc.
+
+Set your endpoint URL in `config.json` (`openai_base_url`) and export your key env var if required by that provider.
 
 ### Install Dispatch
 
@@ -119,12 +125,12 @@ Update `config.json` in the dispatch directory:
 }
 ```
 
-If using `openai-compatible`, export your API key:
+If using `openai-compatible`, export your API key env var:
 ```bash
 export OPENAI_API_KEY=your_key_here
 ```
 
-Or if you're going local and not using any:
+For local OpenAI-compatible servers that don't require auth:
 ```bash
 export OPENAI_API_KEY="local"
 ```
@@ -155,7 +161,6 @@ dispatch/
 │   │   ├── memory.py           # memory tools (update_memory)
 │   │   ├── session.py          # compact conversation (not callable, handled in main loop)
 │   │   ├── shell.py.           # shell tools (run_shell)
-│   │   └── web.py              # web search tools (web_search, fetch_url)
 │   ├── plans/                  # directory where agent's plans and statuses are logged
 │   ├── __init__.py
 │   ├── agent.py                # main loop
@@ -227,7 +232,7 @@ def read_file(path: str):
 ```
 
 * The `@tool` decorator registers the function and its JSON schema into `TOOLS = {}` or into `LAZY{}` if `lazy=True`(tool disabled). 
-* The modules are imported at the bottom of `tools/__init__.py` so decorators run on startup. `get_schemas()` returns all schemas to pass to Ollama. 
+* The modules are imported at the bottom of `tools/__init__.py` so decorators run on startup. `get_schemas()` returns all schemas to pass to the active provider. 
 * `dispatch(name, args)` looks up and calls the function, always returning `{"error": "..."}` on failure instead of raising.
 
 ### Slash Command Registry
