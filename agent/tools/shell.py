@@ -1,11 +1,35 @@
 from agent.tools import tool
 from agent.paths import INVOCATION_DIR
+from agent.tools.files import DISPATCHIGNORE, get_dispatchignore_rules
 from rich.console import Console
 from rich.prompt import Confirm
 import subprocess
 import threading
+import re
 
 console = Console()
+BROAD_PATTERNS = [
+    r"grep\s+.*\s+\.",
+    r"find\s+\.",
+    r"sed\s+-i",
+    r"rm\s+-rf",
+    r">\s*[^\s]",
+]
+
+
+def is_broad_command(cmd: str):
+    return any(re.search(pattern, cmd) for pattern in BROAD_PATTERNS)
+
+
+def shell_description():
+    base = (
+        "Run a shell command in the current working directory, streaming output line by line.\n\n"
+        "Output is truncated after 2000 lines or if the command runs longer than the specified timeout"
+    )
+    rules = get_dispatchignore_rules()
+    if not rules:
+        return base
+    return base + "\n\n.dispatchignore rules (informational for shell):\n- " + "\n- ".join(rules)
 
 
 def stream_shell_command(cmd: str, timeout: int = 300):
@@ -16,11 +40,17 @@ def stream_shell_command(cmd: str, timeout: int = 300):
     console.print(f"[bold cyan]➜ {INVOCATION_DIR.name}[/bold cyan] $ {cmd}")
     console.print()
 
+    if is_broad_command(cmd) and DISPATCHIGNORE.exists():
+        console.print("[yellow]⚠ Broad command detected — .dispatchignore cannot be enforced for shell.[/yellow]")
+        console.print("[dim]Ignored paths will NOT be protected.[/dim]")
+        if not Confirm.ask("Proceed anyway?"):
+            return {"error": "aborted"}
+
     if not Confirm.ask(f"Run: {cmd}?"):
         return {"error": "Command execution cancelled by user"}
 
     try:
-        # Popen lets us stream output line-by-line as the process runs.
+        # Popen streams output line-by-line as the process runs.
         # stdout=PIPE captures output, stderr=STDOUT merges stderr into stdout
         # so we only need to read one stream. bufsize=1 enables line buffering.
         process = subprocess.Popen(
@@ -83,8 +113,7 @@ def stream_shell_command(cmd: str, timeout: int = 300):
     "function": {
         "name": "run_shell",
         "description": (
-            "Run a shell command in the current working directory, streaming output line by line.\n\n"
-            "Output is truncated after 2000 lines or if the command runs longer than the specified timeout"
+            shell_description()
         ),
         "parameters": {
             "type": "object",

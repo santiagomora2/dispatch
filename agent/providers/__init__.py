@@ -7,7 +7,7 @@ SUPPORTED = ["ollama", "openai-compatible"]
 
 
 def get_provider(config: dict | None = None):
-    cfg = config or load_config()
+    cfg = load_config() if config is None else config
     provider = cfg.get("provider", "ollama")
     if provider not in SUPPORTED:
         raise ValueError(f"Unsupported provider '{provider}'. Supported: {', '.join(SUPPORTED)}")
@@ -19,7 +19,7 @@ def load_config():
 
 
 def list_models(config: dict | None = None):
-    cfg = config or load_config()
+    cfg = load_config() if config is None else config
     provider = get_provider(cfg)
     if provider == "ollama":
         return ollama_provider.list_models()
@@ -27,7 +27,7 @@ def list_models(config: dict | None = None):
 
 
 def chat(model: str, messages: list[dict], tools=None, stream: bool = False, config: dict | None = None):
-    cfg = config or load_config()
+    cfg = load_config() if config is None else config
     provider = get_provider(cfg)
     if provider == "ollama":
         return ollama_provider.chat(model=model, messages=messages, tools=tools, stream=stream)

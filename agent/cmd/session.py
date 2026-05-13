@@ -86,6 +86,7 @@ def cmd_provider(arg, ctx):
     # Provider switch can change message format requirements (tool_call_id, etc),
     # so reset conversation while keeping memory/system prompt.
     ctx["messages"].clear()
+    ctx["token_pct"] = 0
     ctx["messages"].append({"role": "system", "content": ctx["system_prompt"]})
     console.print(f"[green]Provider set to: {arg}[/green]")
     console.print("[yellow]Session cleared after provider switch.[/yellow]")

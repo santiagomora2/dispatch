@@ -50,10 +50,11 @@ def run():
     "model": config["model"],
     "config": config,
     "system_prompt": system_prompt,
+    "token_pct": 0,
     }
     session = PromptSession(completer=SlashCompleter())
 
-    print_banner(config["model"], config.get("version", "0.1.2"))
+    print_banner(config["model"], config.get("version", "1.0.1"))
 
     # Main loop
     while True:
@@ -83,10 +84,10 @@ def run():
 
         pending_tool_response = False
 
-        token_pct = estimate_tokens(messages) / ctx["config"]["context_limit"] * 100
+        ctx["token_pct"] = estimate_tokens(messages) / ctx["config"]["context_limit"] * 100
 
         # Check context length and compact if needed before calling the model
-        if token_pct > 80:
+        if ctx["token_pct"] > 80:
             console.print("[bold orange]Reached 80/% of context limit. Auto compacting. [/bold orange] ", end="\n")
             do_compact(ctx, messages)
 
@@ -109,7 +110,7 @@ def run():
         interrupted = False  # flag to track if streaming was interrupted
 
         # Stream assistant response, accumulate content and tool calls
-        console.print(f"[bold green]dispatch[/bold green][dim]({token_pct:.0f}%)[/dim][bold green]>[/bold green] ", end="")
+        console.print(f"[bold green]dispatch[/bold green][dim]({ctx.get('token_pct'):.0f}%)[/dim][bold green]>[/bold green] ", end="")
         # Keyboard interrupt to stop streaming response and return to user input.
         try:
             for chunk in stream:

@@ -6,12 +6,44 @@ from rich.console import Console
 from rich.syntax import Syntax
 from rich.prompt import Confirm
 import difflib
+import fnmatch
 import glob
 import os
 from rich.tree import Tree
 from rich import print as rprint
 
 console = Console()
+
+# .dispatchignore handling inspired by gitignore
+DISPATCHIGNORE = INVOCATION_DIR / ".dispatchignore"
+
+
+def get_dispatchignore_rules():
+    if not DISPATCHIGNORE.exists():
+        return []
+    return [
+        line.strip() for line in DISPATCHIGNORE.read_text().splitlines()
+        if line.strip() and not line.strip().startswith("#")
+    ]
+
+
+def is_dispatch_ignored(path: str):
+    target = Path(path)
+    if not target.is_absolute():
+        target = (INVOCATION_DIR / target).resolve()
+    try:
+        rel = target.relative_to(INVOCATION_DIR.resolve()).as_posix()
+    except ValueError:
+        rel = target.as_posix()
+    
+    for rule in get_dispatchignore_rules():
+        if (
+            (rule.endswith("/") and rel.startswith(rule.rstrip("/") + "/"))
+            or fnmatch.fnmatch(rel, rule)
+            or fnmatch.fnmatch(Path(rel).name, rule)
+        ):
+            return True
+    return None
 
 @tool({
     "type": "function",
@@ -33,6 +65,9 @@ def read_file(path: str, offset: int = 0, limit: int = 2000):
     """
     Read a file and return its contents with line numbers. Output truncated to 2000 lines.
     """
+    if is_dispatch_ignored(path):
+        return {"error": f"Blocked: {path} matches .dispatchignore"}
+
     try:
         with open(path) as f:
             lines = f.readlines()
@@ -68,6 +103,9 @@ def write_file(path: str, content: str = ""):
     """
     Write content to a file, creating it if it doesn't exist. If the file already exists, prompts for confirmation before overwriting.
     """
+    if is_dispatch_ignored(path):
+        return {"error": f"Blocked: {path} matches .dispatchignore"}
+    
     p = Path(path)
     try:
         if p.exists():
@@ -132,6 +170,9 @@ def patch_file(path: str, old_str: list, new_str: list):
         - Insert: include the anchor line in old_str, repeat it in new_str with new content added after
         - Delete: set new_str to empty string
     """
+    if is_dispatch_ignored(path):
+        return {"error": f"Blocked: {path} matches .dispatchignore"}
+    
     p = Path(path)
     try:
         content = p.read_text()

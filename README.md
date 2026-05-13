@@ -186,10 +186,13 @@ dispatch/
 
 1. `dispatch` is invoked from anywhere in the terminal
 2. `main.py` calls `run()` in `agent.py`
-3. `agent.py` loads `config.json` (provider, model, context limit, mode)
-4. `memory.md` is read and injected into the system prompt
+3. `agent.py` loads `config.json` (provider, model, context limit)
+4. `.dispatchignore` rules are also injected into the system prompt once at boot (instead of repeating them on every shell tool call)
 5. The message history is initialized with the system prompt
 6. The main loop starts
+
+> `.dispatchignore` are files that dispatch should never read or edit
+> to inject memory at startup, call `/remember` command, made manual to prevent a lot of context entering the model at startup each time
 
 ### Main Loop
 

@@ -1,0 +1,16 @@
+# python cache
+__pycache__/
+.pytest_cache/
+build/
+dist/
+*.egg-info
+
+# virtual environments
+.venv/
+venv/
+env/
+
+# environment variables
+.env
+.env.local
+
