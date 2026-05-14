@@ -290,8 +290,6 @@ def cmd_note(arg, ctx):
 | `/auto_compact_tools` | `/auto_compact_tools [enable/disable]` | Enable or disable auto tool compaction |
 | `/model` | `/model [name]` | Show or switch the active model |
 | `/provider` | `/provider [ollama/openai-compatible]` | Show or switch the active provider |
-| `/tree` | `/tree <path> <depth>` | Print directory tree |
-| `/ls` | `/ls <path>` | List directory contents |
 | `/plan` | `/plan <task>` | Generate and execute a step-by-step plan |
 | `/help` | `/help` | List all available commands |
 | `/exit` | `/exit` | Quit Dispatch |

@@ -35,7 +35,7 @@ def print_banner(model: str, version: str = "1.0.1"):
     tips = [
         ("/help",  "list all commands"),
         ("/note",  "add something to memory"),
-        ("/tree",  "explore current directory"),
+        ("/remember",  "load memory to dispatch"),
         ("/model", "switch ollama model"),
     ]
 
