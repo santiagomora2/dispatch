@@ -22,7 +22,7 @@ def get_dispatchignore_rules():
     if not DISPATCHIGNORE.exists():
         return []
     return [
-        line.strip() for line in DISPATCHIGNORE.read_text().splitlines()
+        line.strip() for line in DISPATCHIGNORE.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.strip().startswith("#")
     ]
 
@@ -69,7 +69,7 @@ def read_file(path: str, offset: int = 0, limit: int = 2000):
         return {"error": f"Blocked: {path} matches .dispatchignore"}
 
     try:
-        with open(path) as f:
+        with open(path, encoding="utf-8", errors="replace") as f:
             lines = f.readlines()
         numbered = "".join(f"{i+1}: {l}" for i, l in enumerate(lines[offset:offset+limit]))
         return {"content": numbered}
@@ -119,7 +119,7 @@ def write_file(path: str, content: str = ""):
             if not Confirm.ask(f"Create {path}?"):
                 return {"error": "aborted"}
         
-        p.write_text(content)
+        p.write_text(content, encoding="utf-8")
         return {"created": path}
     except Exception as e:
         return {"error": f"An error occurred during file creation: {str(e)}"}
@@ -175,7 +175,7 @@ def patch_file(path: str, old_str: list, new_str: list):
     
     p = Path(path)
     try:
-        content = p.read_text()
+        content = p.read_text(encoding="utf-8", errors="replace")
     except Exception as e:
         return {"error": f"An error occurred while reading the file: {str(e)}"}
 
@@ -197,7 +197,7 @@ def patch_file(path: str, old_str: list, new_str: list):
         if not Confirm.ask(f"Apply patch to {path}?"):
             return {"error": "aborted"}
         
-        p.write_text(new_content)
+        p.write_text(new_content, encoding="utf-8")
         return {"patched": path}
     except PermissionError:
         return {"error": f"Permission denied: Cannot write to '{path}'."}

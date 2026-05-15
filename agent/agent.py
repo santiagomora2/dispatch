@@ -107,6 +107,7 @@ def run():
 
         full_content = ""
         tool_calls = []
+        seen_tool_call_ids = set()
         interrupted = False  # flag to track if streaming was interrupted
 
         # Stream assistant response, accumulate content and tool calls
@@ -119,7 +120,13 @@ def run():
                     console.print(msg["content"], end="", highlight=False)
                     full_content += msg["content"]
                 if msg.get("tool_calls"):
-                    tool_calls.extend(msg["tool_calls"])
+                    for call in msg["tool_calls"]:
+                        call_id = call.get("id")
+                        if call_id and call_id in seen_tool_call_ids:
+                            continue
+                        if call_id:
+                            seen_tool_call_ids.add(call_id)
+                        tool_calls.append(call)
         except KeyboardInterrupt:
             interrupted = True
             console.print("\n[yellow]↩ Interrupted. Type your next message.[/yellow]")

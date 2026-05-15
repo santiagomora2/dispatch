@@ -32,3 +32,18 @@ def test_stream_merges_tool_call_chunks():
     assert tool_call["id"] == "call_1"
     assert tool_call["function"]["name"] == "read_file"
     assert tool_call["function"]["arguments"] == {"path": "ab.txt"}
+
+
+def test_stream_does_not_duplicate_tool_calls_on_repeated_finish_reason():
+    lines = [
+        'data: {"choices":[{"delta":{"tool_calls":[{"index":0,"id":"call_1","function":{"name":"read_file","arguments":"{\\"path\\": \\"a.txt\\"}"}}]}}]}',
+        'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}',
+        'data: {"choices":[{"delta":{},"finish_reason":"tool_calls"}]}',
+        "data: [DONE]",
+    ]
+
+    chunks = list(provider._stream(FakeSSE(lines)))
+    tool_chunks = [c for c in chunks if c["message"]["tool_calls"]]
+
+    assert len(tool_chunks) == 1
+    assert len(tool_chunks[0]["message"]["tool_calls"]) == 1

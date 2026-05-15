@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "dispatch-agent"
-version = "1.0.1"
+version = "1.0.2"
 description = "A local CLI agentic coding tool written in python. Simple enough that anyone can customize it."
 readme = "README.md"
 requires-python = ">=3.11"

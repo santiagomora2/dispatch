@@ -81,7 +81,7 @@ def _stream(response):
             if fn.get("arguments"):
                 part["args"].append(fn["arguments"])
 
-        if choice.get("finish_reason") == "tool_calls":
+        if choice.get("finish_reason") == "tool_calls" and not sent_tool_calls:
             sent_tool_calls = True
             yield {"message": {"content": "", "tool_calls": _finalize_tool_calls(tool_call_parts)}}
 
