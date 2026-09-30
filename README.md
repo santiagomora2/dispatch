@@ -23,7 +23,7 @@ src="https://img.shields.io/github/license/santiagomora2/dispatch" alt="License"
  
  <p align="center">
    <a href="https://pypi.org/project/dispatch-agent/"><img src="https://img.shields.io/pypi/v/dispatch-agent" alt="PyPI version"></a>
-   <a href="https://pypi.org/project/dispatch-agent/"><img src="https://img.shields.io/pypi/dm/dispatch-agent" alt="PyPI downloads"></a>
+   <a href="https://pypi.org/project/dispatch-agent/"><img src="https://img.shields.io/pypi/d/dispatch-agent" alt="PyPI downloads"></a>
    <a href="https://pypi.org/project/dispatch-agent/"><img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+"></a>
  </p>
 
